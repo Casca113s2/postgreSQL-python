@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  postgres-database:
+    container_name: postgres-database
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - back-network
+    volumes:
+      - ./data/postgres-db:/var/lib/postgresql/data
+
+  phonebook-app:
+    container_name: phonebook-app
+    build:
+      context: ./
+    restart: always
+    ports:
+      - "5000:8000"
+    depends_on:
+      postgres-database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - back-network
+      - front-network
+
+  nginx-service:
+    container_name: nginx-service
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      phonebook-app:
+        condition: service_healthy
+    ports:
+      - "8001:8080"
+    networks:
+      - front-network
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./logs/nginx-log:/var/log/nginx
+
+networks:
+  back-network:
+  front-network:
+
+#volumes:
+#  postgres-db:
+#    driver: local
+#  nginx-log:
+#    driver: local

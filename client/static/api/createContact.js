@@ -35,37 +35,36 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-export function createContact(newContact) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const response = yield fetch("/contact", {
-                method: "POST",
-                headers: {},
-                body: JSON.stringify({
-                    name: newContact.name,
-                    phone: newContact.phone,
-                    email: newContact.email,
-                }),
-            });
-            if (response.ok) {
-                const id = yield response.json();
-                console.log(id);
-                const createdContact = [
-                    id,
-                    newContact.name,
-                    newContact.phone,
-                    newContact.email,
-                    false,
-                ];
-                return createdContact;
-            }
-            else {
-                throw new Error("Bad response");
-            }
+export async function createContact(newContact) {
+    try {
+        const response = await fetch("/contact", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name:  newContact.name,
+                phone: newContact.phone,
+                email: newContact.email,
+            }),
+        });
+
+        if (response.ok) {
+            const id = await response.json();
+            console.log("Contact created with ID:", id);
+            const createdContact = [
+                id,
+                newContact.name,
+                newContact.phone,
+                newContact.email,
+                false,
+            ];
+            return createdContact;
+        } else {
+            throw new Error("Failed to create contact");
         }
-        catch (err) {
-            console.error(err);
-            throw new Error("Error fetching data");
-        }
-    });
+    } catch (error) {
+        console.error("Error creating contact:", error);
+        throw new Error("Error creating contact: " + error.message);
+    }
 }

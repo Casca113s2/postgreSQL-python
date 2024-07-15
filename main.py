@@ -21,7 +21,9 @@ app.add_middleware(
 )
 
 # Fetch the results
-DATABASE.execute("""CREATE TABLE IF NOT EXISTS public.contacts(
+DATABASE.execute("""
+    CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 1 INCREMENT BY 1;
+    CREATE TABLE IF NOT EXISTS public.contacts(
     id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
     name character varying(100) COLLATE pg_catalog."default" NOT NULL,
     phone character varying(12) COLLATE pg_catalog."default" NOT NULL,
@@ -42,7 +44,7 @@ async def create_contact(new_contact: Contact):
     Raises:
         HTTPException: If there is an error while querying the database. 
     """
-    contact_id = DATABASE.query(f"INSERT INTO contacts (name,phone,email) VALUES ('{new_contact.name}','{new_contact.phone}','{new_contact.email}') RETURNING id")
+    contact_id = DATABASE.execute(f"INSERT INTO contacts (name,phone,email) VALUES ('{new_contact.name}','{new_contact.phone}','{new_contact.email}') RETURNING id")
     return contact_id[0][0]
 
 # Read

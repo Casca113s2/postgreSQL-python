@@ -1,3 +1,5 @@
+import { createContact } from './createContact.js';
+
 function generateInputTextForm(name, placeholder, type = "text", defaultValue = "") {
     var inputText = document.createElement("input");
     inputText.className = "card__input";
@@ -38,10 +40,32 @@ export function generateCreateForm() {
     function submitCreateForm(ev) {
         ev.preventDefault();
         console.log("Submit Create Form");
+
+        // Get loading shade element
         var loading = document.getElementById("loading-shade");
         if (loading == null)
             throw new Error("Not loading shade loaded.");
         loading.className = "loading-shade-create-form";
+
+        // Gather form data
+        const name = form.elements['name'].value;
+        const phone = form.elements['number'].value;
+        const email = form.elements['email'].value;
+
+        const newContact = { name, phone, email };
+
+        // Call createContact and handle the result
+        createContact(newContact)
+            .then(createdContact => {
+                console.log('Contact created:', createdContact);
+                // Handle successful contact creation (e.g., update the UI, clear the form, etc.)
+                loading.className = "loading-shade-create-form hidden"; // Hide loading indicator
+            })
+            .catch(error => {
+                console.error('Error creating contact:', error);
+                // Handle the error (e.g., display an error message to the user)
+                loading.className = "loading-shade-create-form hidden"; // Hide loading indicator
+            });
     }
     // Form submit
     form.addEventListener("submit", submitCreateForm);
