@@ -31,7 +31,9 @@ export async function createContact(newContact: contactBase): Promise<contact> {
     try {
         const response = await fetch("/contact", {
             method: "POST",
-            headers: {},
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
                 name: newContact.name,
                 phone: newContact.phone,

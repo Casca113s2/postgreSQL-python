@@ -16,7 +16,7 @@ services:
     networks:
       - back-network
     volumes:
-      - ./data/postgres-db:/var/lib/postgresql/data
+      - postgres-db:/var/lib/postgresql/data
 
   phonebook-app:
     container_name: phonebook-app
@@ -50,14 +50,14 @@ services:
       - front-network
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./logs/nginx-log:/var/log/nginx
+      - nginx-log:/var/log/nginx
 
 networks:
   back-network:
   front-network:
 
-#volumes:
-#  postgres-db:
-#    driver: local
-#  nginx-log:
-#    driver: local
+volumes:
+  postgres-db:
+    driver: local
+  nginx-log:
+    driver: local

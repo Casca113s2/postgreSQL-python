@@ -1,3 +1,5 @@
+import { createContact } from '../api/createContact.js';
+
 export default class modalForm {
   formDiv: HTMLDivElement;
   loadingShade: HTMLDivElement;
@@ -120,13 +122,36 @@ export default class modalForm {
 
     this.form.appendChild(this.submitButton);
 
-    function submitCreateForm(this: HTMLFormElement, ev: SubmitEvent) {
+    async function submitCreateForm(this: HTMLFormElement, ev: SubmitEvent) {
       ev.preventDefault();
+      console.log("Submit Create Form");
 
-      var loading: HTMLElement | null =
-        document.getElementById("loading-shade");
+      // Get loading shade element
+      const loading = document.getElementById("loading-shade");
       if (loading == null) throw new Error("Not loading shade loaded.");
       loading.className = "loading-shade-create-form";
+
+      // Gather form data
+      const formData = new FormData(ev.target as HTMLFormElement);
+      const newContact = {
+        name: formData.get('name') as string,
+        phone: formData.get('number') as string,
+        email: formData.get('email') as string,
+      };
+
+      // Call createContact and handle the result
+      try {
+        const createdContact = await createContact(newContact);
+        console.log('Contact created:', createdContact);
+        // Handle successful contact creation (e.g., update the UI, clear the form, etc.)
+        loading.className = "loading-shade-create-form hidden"; // Hide loading indicator
+      } catch (error) {
+        console.error('Error creating contact:', error);
+        // Handle the error (e.g., display an error message to the user)
+        loading.className = "loading-shade-create-form hidden"; // Hide loading indicator
+      }
+
+      location.reload();
     }
 
     // Form submit
