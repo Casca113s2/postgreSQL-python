@@ -26,10 +26,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Run docker-compose
-        uses: hoverkraft-tech/compose-action@v2.0.1
-        with:
-          compose-file: "./docker-compose.yml"
+      - name: Build Docker images
+        run: docker-compose build
           
       - name: Push Docker images
         run: docker-compose push
