@@ -58,8 +58,8 @@ networks:
   front-network:
     driver: bridge
 
-#volumes:
-#  postgres-db:
-#    driver: local
-#  nginx-log:
-#    driver: local
+volumes:
+  postgres-db:
+    driver: local
+  nginx-log:
+    driver: local
