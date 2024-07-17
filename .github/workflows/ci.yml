@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  build:
+  build-nodejs-application:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
