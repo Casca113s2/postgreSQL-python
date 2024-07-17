@@ -22,6 +22,7 @@ services:
     container_name: phonebook-app
     build:
       context: ./
+      dockerfile: app-Dockerfile
     restart: always
     ports:
       - "5000:8000"
