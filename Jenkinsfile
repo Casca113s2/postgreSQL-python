@@ -12,6 +12,7 @@ pipeline {
             steps {
                 echo "Building.."
                 sh '''
+                sudo chown -R vagrant:vagrant ./agent
                 docker compose build
                 '''
             }
