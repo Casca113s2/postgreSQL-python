@@ -12,7 +12,7 @@ pipeline {
             steps {
                 echo "Building.."
                 sh '''
-                sudo chown -R vagrant:vagrant ./agent
+                sudo chown -R vagrant:vagrant /home/vagrant/agent/
                 docker compose build
                 '''
             }
@@ -36,7 +36,7 @@ pipeline {
                 echo 'Deploy....'
                 sh '''
                 docker compose down
-                docker compose up
+                docker compose up -d
                 '''
             }
         }
