@@ -1,10 +1,13 @@
 pipeline {
+
     agent { 
         node {
             label 'VM-agent'
-            }
-      }
+        }
+    }
+
     stages {
+
         stage('Build') {
             steps {
                 echo "Building.."
@@ -13,19 +16,20 @@ pipeline {
                 '''
             }
         }
+
         stage('Push') {
             steps {
-                echo "Pushing.."
                 script {
-                     withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'password', usernameVariable: 'username')]){
-                         sh '''
-                            echo "${password} | docker login -u ${username} --password-stdin"
+                    withDockerRegistry(credentialsId: 'DockerHub') {
+                        sh '''
+                            echo "Pushing.."
                             docker compose push
-                         '''
-                     }
+                        '''
+                    }
                 }
             }
         }
+
         stage('Deploy') {
             steps {
                 echo 'Deploy....'
