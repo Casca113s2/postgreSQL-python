@@ -9,9 +9,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: 
-      group: self-hosted
-      labels: runner1
+    runs-on: self-hosted
     steps:
     - name: Build
       uses: appleboy/jenkins-action@master
