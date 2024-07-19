@@ -3,6 +3,7 @@ version: '3.9'
 services:
   postgres-database:
     container_name: postgres-database
+    image: postgres:14.1-alpine
     restart: always
     environment:
       - POSTGRES_USER=postgres
@@ -19,7 +20,7 @@ services:
 
   phonebook-app:
     container_name: phonebook-app
-    image: casca113s2/phonebook:app
+    image: casca113s2/phonebook:lastest
     build:
       context: ./
       dockerfile: app-Dockerfile
@@ -40,6 +41,7 @@ services:
 
   nginx-service:
     container_name: nginx-service
+    image: nginx:alpine
     restart: always
     depends_on:
       phonebook-app:
