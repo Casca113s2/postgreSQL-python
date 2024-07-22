@@ -8,13 +8,21 @@ pipeline {
 
     stages {
 
-        stage('Build') {
+        stage('Extract Git Commit Hash') {
             steps {
-                echo "Building.."
-                sh '''
-                sudo chown -R vagrant:vagrant /home/vagrant/agent/
-                docker compose build
-                '''
+                script {
+                    sh "echo 'Extracting Git Commit Hash..'"
+                    env.GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "echo 'Building..'"
+                    sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose build"
+                }
             }
         }
 
@@ -34,10 +42,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploy....'
-                sh '''
-                docker compose down
-                docker compose up -d
-                '''
+                sh "docker compose down"
+                sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose up -d"
             }
         }
     }
