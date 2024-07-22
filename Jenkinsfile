@@ -45,13 +45,16 @@ pipeline {
                     #!/bin/bash
                     IMAGE_TAG=${GIT_COMMIT_HASH}
                     IMAGE_NAME="casca113s2/phonebook:\$IMAGE_TAG"
-                    
-                    # Pull the latest Docker image
-                    docker pull \$IMAGE_NAME
-                    
+
                     # Stop and remove the existing container (if any)
                     docker stop phonebook-app || true
                     docker rm phonebook-app || true
+
+                    # Delete all the previous image (if exist)
+                    docker image rm \$(docker image ls -qa) || true
+
+                    # Pull the latest Docker image
+                    docker pull \$IMAGE_NAME
                     
                     # Run the new Docker image
                     docker run -d \\
