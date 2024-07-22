@@ -11,6 +11,4 @@ services:
          - GIT_COMMIT_HASH
     image: casca113s2/phonebook:${GIT_COMMIT_HASH}
     restart: always
-    ports:
-      - "5000:8000"
     network_mode: host
