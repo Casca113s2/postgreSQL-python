@@ -6,32 +6,30 @@ pipeline {
         }
     }
 
-    stages {
+    environment {
+        GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        REMOTE_SERVER = 'vagrant@10.10.31.251'
+        DEPLOY_SCRIPT_PATH = './deploy.sh'
+        SSH_PASSWORD = credentials('ssh_password')
+    }
 
-        stage('Extract Git Commit Hash') {
-            steps {
-                script {
-                    sh "echo 'Extracting Git Commit Hash..'"
-                    env.GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                }
-            }
-        }
+    stages {
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "echo 'Building..'"
+                    sh "echo 'Building Docker Image...'"
                     sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose build"
                 }
             }
         }
 
-        stage('Push') {
+        stage('Push Docker Image to Docker Hub') {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'DockerHub') {
                         sh '''
-                            echo "Pushing.."
+                            echo "Pushing Docker Image to Docker Hub..."
                             docker compose push
                         '''
                     }
@@ -39,11 +37,35 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy Docker Image') {
             steps {
-                echo 'Deploy....'
-                sh "docker compose down"
-                sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose up -d"
+                script {
+                    // Create a temporary local file to store the deployment script
+                    writeFile file: 'deploy.sh', text: """
+                    #!/bin/bash
+                    IMAGE_TAG=${GIT_COMMIT_HASH}
+                    IMAGE_NAME="casca113s2/phonebook:\$IMAGE_TAG"
+                    
+                    # Pull the latest Docker image
+                    docker pull \$IMAGE_NAME
+                    
+                    # Stop and remove the existing container (if any)
+                    docker stop phonebook-app || true
+                    docker rm phonebook-app || true
+                    
+                    # Run the new Docker image
+                    docker run -d \\
+                      --name phonebook-app \\
+                      --network host \\
+                      \$IMAGE_NAME
+                    """
+                    
+                    // Upload the script to the remote server
+                    sh "sshpass -p ${SSH_PASSWORD} scp deploy.sh ${REMOTE_SERVER}:/tmp/deploy.sh"
+                    
+                    // Execute the script on the remote server
+                    sh "sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} 'bash /tmp/deploy.sh'"
+                }
             }
         }
     }
