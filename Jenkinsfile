@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        REMOTE_SERVER = 'vagrant@10.10.31.251'
+        REMOTE_SERVER = 'developer@158.247.231.127'
         DEPLOY_SCRIPT_PATH = './deploy.sh'
         SSH_PASSWORD = credentials('ssh_password')
     }
@@ -64,10 +64,10 @@ pipeline {
                     """
                     
                     // Upload the script to the remote server
-                    sh "sshpass -p ${SSH_PASSWORD} scp deploy.sh ${REMOTE_SERVER}:/tmp/deploy.sh"
+                    sh "sshpass -p ${SSH_PASSWORD} scp deploy.sh ${REMOTE_SERVER}:~/deploy.sh"
                     
                     // Execute the script on the remote server
-                    sh "sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} 'bash /tmp/deploy.sh'"
+                    sh "sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} 'bash ~/deploy.sh'"
                 }
             }
         }
