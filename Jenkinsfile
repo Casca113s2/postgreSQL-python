@@ -65,12 +65,12 @@ pipeline {
                     
                     // Upload the script to the remote server
                     withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
-                        sh 'sshpass -p ${SSH_PASSWORD} scp deploy.sh ${REMOTE_SERVER}:/tmp/deploy.sh'
+                        sh 'sshpass -p ${SSH_PASSWORD} scp deploy.sh ${REMOTE_SERVER}:~/deploy.sh'
                     }
 
                     // Execute the script on the remote server
                     withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
-                        sh 'sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} "bash /tmp/deploy.sh"'
+                        sh 'sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} "bash ~/deploy.sh"'
                     }
                 }
             }
