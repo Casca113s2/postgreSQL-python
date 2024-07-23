@@ -75,5 +75,20 @@ pipeline {
                 }
             }
         }
+
+        stage('Healthcheck') {
+            steps {
+                script {
+                    // Perform healthcheck
+                    def healthcheckUrl = "http://${REMOTE_SERVER}/healthcheck"
+                    def healthcheckResponse = sh(script: "curl -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
+                    if (healthcheckResponse == '200') {
+                        echo "Healthcheck passed: Server is online."
+                    } else {
+                        error("Healthcheck failed: Server is not responding with status 200.")
+                    }
+                }
+            }
+        }
     }
 }

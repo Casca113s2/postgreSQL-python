@@ -104,4 +104,9 @@ async def delete_contact(contact_id: str):
     return DATABASE.execute("DELETE FROM contacts WHERE id={}"
                             .format(contact_id))
 
+# Healthcheck endpoint
+@app.get("/healthcheck")
+async def healthcheck():
+    return {"status": "ok"}
+
 app.mount("/", StaticFiles(directory="client/static", html=True), name="static")
