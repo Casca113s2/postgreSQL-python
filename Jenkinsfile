@@ -20,7 +20,7 @@ pipeline {
             steps {
                 script {
                     sh "echo 'Building Docker Image...'"
-                    sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose build"
+                    sh "GIT_COMMIT_HASH=${GIT_COMMIT_HASH} docker compose build"
                 }
             }
         }
@@ -88,7 +88,7 @@ pipeline {
                     def commitHash = GIT_COMMIT_HASH
                     def version = "phonebook:dev-${GIT_COMMIT_HASH}"
                     def author = sh(script: 'git log -1 --pretty=format:%an', returnStdout: true).trim()
-                    def date
+                    def date = new Date().format('yyyy-MM-dd HH:mm:ss')
 
                     // Perform healthcheck
                     def healthcheckUrl = "${APP_URL}/healthcheck"
@@ -101,14 +101,22 @@ pipeline {
                             echo "Healthcheck passed: Server is online."
                             //Test success
                             date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                            
                             def message = """{
-                                "content": "Build Status: **Success**\\nDeployed version: ${version}\\nDate: ${date}\\nAuthor: ${author}\\nCommit hash: ${commitHash}"
+                                "embeds": [{
+                                    "title": "Build Status: Success",
+                                    "color": 3066993,
+                                    "fields": [
+                                        {"name": "Deployed Version", "value": "${version}", "inline": true},
+                                        {"name": "Date", "value": "${date}", "inline": true},
+                                        {"name": "Author", "value": "${author}", "inline": true},
+                                        {"name": "Commit Hash", "value": "${commitHash}", "inline": false}
+                                    ]
+                                }]
                             }"""
-
+                            
                             sh """
-                                curl -X POST ${DISCORD_WEBHOOK_URL} \
-                                    -H "Content-Type: application/json" \
-                                    -d '${message}'
+                                curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
                             """
                             return;
                         }
@@ -116,13 +124,22 @@ pipeline {
 
                     //Test fail
                     date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                    
                     def message = """{
-                        "content": "Build Status: **Failure**\\nDeployed version: ${version}\\nDate: ${date}\\nAuthor: ${author}\\nCommit hash: ${commitHash}"
+                        "embeds": [{
+                            "title": "Build Status: Failure",
+                            "color": 15158332,
+                            "fields": [
+                                {"name": "Deployed Version", "value": "${version}", "inline": true},
+                                {"name": "Date", "value": "${date}", "inline": true},
+                                {"name": "Author", "value": "${author}", "inline": true},
+                                {"name": "Commit Hash", "value": "${commitHash}", "inline": false}
+                            ]
+                        }]
                     }"""
+
                     sh """
-                        curl -X POST ${DISCORD_WEBHOOK_URL} \
-                            -H "Content-Type: application/json" \
-                            -d '${message}'
+                        curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
                     """
                     error("Healthcheck failed: Server is not responding with status 200.")
                 }
