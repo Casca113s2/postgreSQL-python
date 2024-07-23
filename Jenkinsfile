@@ -82,7 +82,7 @@ pipeline {
                 script {
                     // Perform healthcheck
                     def healthcheckUrl = "${APP_URL}/healthcheck"
-                    def healthcheckResponse = sh(script: "curl -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
+                    def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
                     echo "${healthcheckResponse}"
                     if (healthcheckResponse == '200') {
                         echo "Healthcheck passed: Server is online."
