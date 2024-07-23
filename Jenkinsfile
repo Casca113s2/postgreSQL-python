@@ -9,7 +9,6 @@ pipeline {
     environment {
         GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         REMOTE_SERVER = 'developer@158.247.231.127'
-        //DEPLOY_SCRIPT_PATH = './deploy.sh'
         APP_URL = 'https://dev-app.cascabase.online'
         SSH_PASSWORD = credentials('ssh_password')
     }
@@ -81,7 +80,7 @@ pipeline {
             steps {
                 script {
                     // Perform healthcheck
-                    def healthcheckUrl = "${APP_URL}/healthcheck"
+                    def healthcheckUrl = "${APP_URL}"
                     def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
                     echo "HTTP Status Code: ${healthcheckResponse}"
                     if (healthcheckResponse == '200') {
