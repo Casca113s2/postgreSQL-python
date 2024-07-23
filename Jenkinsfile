@@ -11,6 +11,7 @@ pipeline {
         REMOTE_SERVER = 'developer@158.247.231.127'
         APP_URL = 'https://dev-app.cascabase.online'
         SSH_PASSWORD = credentials('ssh_password')
+        DISCORD_WEBHOOK_URL = credentials('Discord-WebHook')
     }
 
     stages {
@@ -84,6 +85,11 @@ pipeline {
         stage('Healthcheck') {
             steps {
                 script {
+                    def commitHash = GIT_COMMIT_HASH
+                    def version = "phonebook:dev-${GIT_COMMIT_HASH}"
+                    def author = sh(script: 'git log -1 --pretty=format:%an', returnStdout: true).trim()
+                    def date
+
                     // Perform healthcheck
                     def healthcheckUrl = "${APP_URL}/healthcheck"
                     
@@ -93,9 +99,31 @@ pipeline {
                         
                         if (healthcheckResponse == '200') {
                             echo "Healthcheck passed: Server is online."
+                            //Test success
+                            date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                            def message = """{
+                                "content": "Build Status: **Success**\\nDeployed version: ${version}\\nDate: ${date}\\nAuthor: ${author}\\nCommit hash: ${commitHash}"
+                            }"""
+
+                            sh """
+                                curl -X POST ${DISCORD_WEBHOOK_URL} \
+                                    -H "Content-Type: application/json" \
+                                    -d '${message}'
+                            """
                             return;
                         }
                     }
+
+                    //Test fail
+                    date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                    def message = """{
+                        "content": "Build Status: **Failure**\\nDeployed version: ${version}\\nDate: ${date}\\nAuthor: ${author}\\nCommit hash: ${commitHash}"
+                    }"""
+                    sh """
+                        curl -X POST ${DISCORD_WEBHOOK_URL} \
+                            -H "Content-Type: application/json" \
+                            -d '${message}'
+                    """
                     error("Healthcheck failed: Server is not responding with status 200.")
                 }
             }
