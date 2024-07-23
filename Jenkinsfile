@@ -19,6 +19,7 @@ pipeline {
             steps {
                 script {
                     sh "echo 'Building Docker Image...'"
+                    sh "whoami"
                     sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose build"
                 }
             }
