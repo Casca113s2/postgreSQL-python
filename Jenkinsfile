@@ -61,6 +61,8 @@ pipeline {
                       --name phonebook-app \\
                       --network host \\
                       \$IMAGE_NAME
+                    # Remove the deployment script
+                    rm -- "\$0"
                     """
                     
                     // Upload the script to the remote server
@@ -72,6 +74,9 @@ pipeline {
                     withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
                         sh 'sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} "bash ~/deploy.sh"'
                     }
+
+                    // Remove the local deployment script
+                    sh 'rm deploy.sh'
                 }
             }
         }
