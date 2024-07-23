@@ -9,6 +9,6 @@ services:
       dockerfile: app-Dockerfile
       args:
          - GIT_COMMIT_HASH
-    image: casca113s2/phonebook:${GIT_COMMIT_HASH}
+    image: casca113s2/phonebook:dev-${GIT_COMMIT_HASH}
     restart: always
     network_mode: host

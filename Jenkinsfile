@@ -44,7 +44,7 @@ pipeline {
                     writeFile file: 'deploy.sh', text: """
                     #!/bin/bash
                     IMAGE_TAG=${GIT_COMMIT_HASH}
-                    IMAGE_NAME="casca113s2/phonebook:\$IMAGE_TAG"
+                    IMAGE_NAME="casca113s2/phonebook:dev-\$IMAGE_TAG"
 
                     # Stop and remove the existing container (if any)
                     docker stop phonebook-app || true
@@ -83,16 +83,15 @@ pipeline {
                     def healthcheckUrl = "${APP_URL}/healthcheck"
                     
                     for(int i=0; i<10; i++) {
-                        sh "sleep 10";
+                        sh "sleep 10"
                         def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
-                        echo "HTTP Status Code: ${healthcheckResponse}"
+                        
                         if (healthcheckResponse == '200') {
                             echo "Healthcheck passed: Server is online."
-                            break;
-                        } else if(i==9) {
-                            error("Healthcheck failed: Server is not responding with status 200.")
+                            return;
                         }
                     }
+                    error("Healthcheck failed: Server is not responding with status 200.")
                 }
             }
         }
