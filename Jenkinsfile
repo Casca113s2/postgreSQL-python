@@ -10,6 +10,7 @@ pipeline {
         GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         REMOTE_SERVER = 'developer@158.247.231.127'
         //DEPLOY_SCRIPT_PATH = './deploy.sh'
+        APP_URL = 'https://dev-app.cascabase.online'
         SSH_PASSWORD = credentials('ssh_password')
     }
 
@@ -19,7 +20,6 @@ pipeline {
             steps {
                 script {
                     sh "echo 'Building Docker Image...'"
-                    sh "whoami"
                     sh "GIT_COMMIT_HASH=${env.GIT_COMMIT_HASH} docker compose build"
                 }
             }
@@ -81,8 +81,9 @@ pipeline {
             steps {
                 script {
                     // Perform healthcheck
-                    def healthcheckUrl = "http://${REMOTE_SERVER}/healthcheck"
+                    def healthcheckUrl = "${APP_URL}/healthcheck"
                     def healthcheckResponse = sh(script: "curl -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
+                    echo "${healthcheckResponse}"
                     if (healthcheckResponse == '200') {
                         echo "Healthcheck passed: Server is online."
                     } else {
