@@ -80,13 +80,18 @@ pipeline {
             steps {
                 script {
                     // Perform healthcheck
-                    def healthcheckUrl = "${APP_URL}"
-                    def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
-                    echo "HTTP Status Code: ${healthcheckResponse}"
-                    if (healthcheckResponse == '200') {
-                        echo "Healthcheck passed: Server is online."
-                    } else {
-                        error("Healthcheck failed: Server is not responding with status 200.")
+                    def healthcheckUrl = "${APP_URL}/healthcheck"
+                    
+                    for(int i=0; i<10; i++) {
+                        sh "sleep 10";
+                        def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
+                        echo "HTTP Status Code: ${healthcheckResponse}"
+                        if (healthcheckResponse == '200') {
+                            echo "Healthcheck passed: Server is online."
+                            break;
+                        } else if(i==9) {
+                            error("Healthcheck failed: Server is not responding with status 200.")
+                        }
                     }
                 }
             }
