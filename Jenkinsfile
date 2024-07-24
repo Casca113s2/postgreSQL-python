@@ -101,7 +101,7 @@ pipeline {
                         def date = new Date().format('yyyy-MM-dd HH:mm:ss')
 
                         // Perform healthcheck
-                        def healthcheckUrl = "${APP_URL}/health-check"
+                        def healthcheckUrl = "${APP_URL}/healthcheck"
                         
                         for(int i=0; i<10; i++) {
                             sh "sleep 10"
