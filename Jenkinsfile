@@ -166,65 +166,67 @@ pipeline {
             }
             steps {
                 script {
-                    input message: 'Deploy to Tester Server?', ok: 'Deploy', submitter: 'admin'
+                    timeout(time: 1, unit: 'MINUTES') {
+                        input message: 'Deploy to Tester Server?', ok: 'Deploy', submitter: 'admin'
 
-                    // Deployment script for the tester server
-                    writeFile file: 'deploy-test.sh', text: """
-                    #!/bin/bash
-                    IMAGE_TAG=${GIT_COMMIT_HASH}
-                    IMAGE_NAME="casca113s2/phonebook:dev-\$IMAGE_TAG"
+                        // Deployment script for the tester server
+                        writeFile file: 'deploy-test.sh', text: """
+                        #!/bin/bash
+                        IMAGE_TAG=${GIT_COMMIT_HASH}
+                        IMAGE_NAME="casca113s2/phonebook:dev-\$IMAGE_TAG"
 
-                    # Save the current running image name
-                    CURRENT_IMAGE=\$(docker inspect --format='{{.Config.Image}}' phonebook-app 2>/dev/null || echo '')
+                        # Save the current running image name
+                        CURRENT_IMAGE=\$(docker inspect --format='{{.Config.Image}}' phonebook-app 2>/dev/null || echo '')
 
-                    # Stop and remove the existing container (if any)
-                    docker stop phonebook-app || true
-                    docker rm phonebook-app || true
+                        # Stop and remove the existing container (if any)
+                        docker stop phonebook-app || true
+                        docker rm phonebook-app || true
 
-                    # Delete all the previous image (if exist)
-                    docker image rm \$(docker image ls -qa) || true
+                        # Delete all the previous image (if exist)
+                        docker image rm \$(docker image ls -qa) || true
 
-                    # Pull the latest Docker image
-                    docker pull \$IMAGE_NAME
-                    
-                    # Run the new Docker image
-                    docker run -d \\
-                      --name phonebook-app \\
-                      --network host \\
-                      \$IMAGE_NAME
-                    
-                    # Remove the deployment script
-                    rm -- "\$0"
-                    """
-                    
-                    // Upload the script to the remote server
-                    withCredentials([string(credentialsId: 'tester_ssh_password', variable: 'TEST_SSH_PASSWORD')]) {
-                        sh 'sshpass -p ${TEST_SSH_PASSWORD} scp deploy-test.sh ${TEST_REMOTE_SERVER}:~/deploy-test.sh'
+                        # Pull the latest Docker image
+                        docker pull \$IMAGE_NAME
+                        
+                        # Run the new Docker image
+                        docker run -d \\
+                        --name phonebook-app \\
+                        --network host \\
+                        \$IMAGE_NAME
+                        
+                        # Remove the deployment script
+                        rm -- "\$0"
+                        """
+                        
+                        // Upload the script to the remote server
+                        withCredentials([string(credentialsId: 'tester_ssh_password', variable: 'TEST_SSH_PASSWORD')]) {
+                            sh 'sshpass -p ${TEST_SSH_PASSWORD} scp deploy-test.sh ${TEST_REMOTE_SERVER}:~/deploy-test.sh'
+                        }
+
+                        // Execute the script on the remote server
+                        withCredentials([string(credentialsId: 'tester_ssh_password', variable: 'TEST_SSH_PASSWORD')]) {
+                            sh 'sshpass -p ${TEST_SSH_PASSWORD} ssh ${TEST_REMOTE_SERVER} "bash ~/deploy-test.sh"'
+                        }
+
+                        // Remove the local deployment script
+                        sh 'rm deploy-test.sh'
+
+                        // Send deploy to test server information to Discord
+                        def testerMessage = """{
+                            "embeds": [{
+                                "title": "Deployment to Tester Server",
+                                "color": 12745742,
+                                "fields": [
+                                    {"name": "Deployed Version", "value": "phonebook:dev-${GIT_COMMIT_HASH}", "inline": true},
+                                    {"name": "Date", "value": "${new Date().format('yyyy-MM-dd HH:mm:ss')}", "inline": true}
+                                ]
+                            }]
+                        }"""
+                        
+                        sh """
+                            curl -X POST -H "Content-Type: application/json" -d '${testerMessage}' ${DISCORD_WEBHOOK_URL}
+                        """
                     }
-
-                    // Execute the script on the remote server
-                    withCredentials([string(credentialsId: 'tester_ssh_password', variable: 'TEST_SSH_PASSWORD')]) {
-                        sh 'sshpass -p ${TEST_SSH_PASSWORD} ssh ${TEST_REMOTE_SERVER} "bash ~/deploy-test.sh"'
-                    }
-
-                    // Remove the local deployment script
-                    sh 'rm deploy-test.sh'
-
-                    // Send deploy to test server information to Discord
-                    def testerMessage = """{
-                        "embeds": [{
-                            "title": "Deployment to Tester Server",
-                            "color": 12745742,
-                            "fields": [
-                                {"name": "Deployed Version", "value": "phonebook:dev-${GIT_COMMIT_HASH}", "inline": true},
-                                {"name": "Date", "value": "${new Date().format('yyyy-MM-dd HH:mm:ss')}", "inline": true}
-                            ]
-                        }]
-                    }"""
-                    
-                    sh """
-                        curl -X POST -H "Content-Type: application/json" -d '${testerMessage}' ${DISCORD_WEBHOOK_URL}
-                    """
                 }
             }
         }
