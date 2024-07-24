@@ -8,8 +8,10 @@ pipeline {
 
     environment {
         GIT_COMMIT_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        REMOTE_SERVER = 'developer@158.247.231.127'
-        APP_URL = 'https://dev-app.cascabase.online'
+        DEV_REMOTE_SERVER = 'developer@158.247.231.127'
+        DEV_APP_URL = 'https://dev-app.cascabase.online'
+        TEST_REMOTE_SERVER = 'tester@158.247.202.148'
+        TEST_APP_URL = 'https://test-app.cascabase.online'
         SSH_PASSWORD = credentials('ssh_password')
         DISCORD_WEBHOOK_URL = credentials('Discord-WebHook')
     }
@@ -77,12 +79,12 @@ pipeline {
                     
                     // Upload the script to the remote server
                     withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
-                        sh 'sshpass -p ${SSH_PASSWORD} scp deploy.sh ${REMOTE_SERVER}:~/deploy.sh'
+                        sh 'sshpass -p ${SSH_PASSWORD} scp deploy.sh ${DEV_REMOTE_SERVER}:~/deploy.sh'
                     }
 
                     // Execute the script on the remote server
                     withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
-                        sh 'sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} "bash ~/deploy.sh"'
+                        sh 'sshpass -p ${SSH_PASSWORD} ssh ${DEV_REMOTE_SERVER} "bash ~/deploy.sh"'
                     }
 
                     // Remove the local deployment script
@@ -101,7 +103,7 @@ pipeline {
                         def date = new Date().format('yyyy-MM-dd HH:mm:ss')
 
                         // Perform healthcheck
-                        def healthcheckUrl = "${APP_URL}/healthcheck"
+                        def healthcheckUrl = "${DEV_APP_URL}/healthcheck"
                         
                         for(int i=0; i<10; i++) {
                             sh "sleep 10"
@@ -128,6 +130,7 @@ pipeline {
                                 sh """
                                     curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
                                 """
+                                currentBuild.result = 'SUCCESS'
                                 return;
                             }
                         }
@@ -157,6 +160,59 @@ pipeline {
             }
         }
 
+        stage('Manual Deployment to Tester Server') {
+            when {
+                expression { currentBuild.result == 'SUCCESS' }
+            }
+            steps {
+                script {
+                    input message: 'Deploy to Tester Server?', ok: 'Deploy', submitter: 'admin'
+
+                    // Deployment script for the tester server
+                    writeFile file: 'deploy-test.sh', text: """
+                    #!/bin/bash
+                    IMAGE_TAG=${GIT_COMMIT_HASH}
+                    IMAGE_NAME="casca113s2/phonebook:dev-\$IMAGE_TAG"
+
+                    # Save the current running image name
+                    CURRENT_IMAGE=\$(docker inspect --format='{{.Config.Image}}' phonebook-app 2>/dev/null || echo '')
+
+                    # Stop and remove the existing container (if any)
+                    docker stop phonebook-app || true
+                    docker rm phonebook-app || true
+
+                    # Delete all the previous image (if exist)
+                    docker image rm \$(docker image ls -qa) || true
+
+                    # Pull the latest Docker image
+                    docker pull \$IMAGE_NAME
+                    
+                    # Run the new Docker image
+                    docker run -d \\
+                      --name phonebook-app \\
+                      --network host \\
+                      \$IMAGE_NAME
+                    
+                    # Remove the deployment script
+                    rm -- "\$0"
+                    """
+                    
+                    // Upload the script to the remote server
+                    withCredentials([string(credentialsId: 'tester_ssh_password', variable: 'TEST_SSH_PASSWORD')]) {
+                        sh 'sshpass -p ${TEST_SSH_PASSWORD} scp deploy-test.sh ${TEST_REMOTE_SERVER}:~/deploy-test.sh'
+                    }
+
+                    // Execute the script on the remote server
+                    withCredentials([string(credentialsId: 'tester_ssh_password', variable: 'TEST_SSH_PASSWORD')]) {
+                        sh 'sshpass -p ${TEST_SSH_PASSWORD} ssh ${TEST_REMOTE_SERVER} "bash ~/deploy-test.sh"'
+                    }
+
+                    // Remove the local deployment script
+                    sh 'rm deploy-test.sh'
+                }
+            }
+        }
+
         stage('Rollback') {
             when {
                 expression { currentBuild.result == 'FAILURE' }
@@ -166,7 +222,7 @@ pipeline {
                     // Perform rollback
                     withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
                         sh """
-                        sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} bash -c '
+                        sshpass -p ${SSH_PASSWORD} ssh ${DEV_REMOTE_SERVER} bash -c '
                         if [ -f ~/previous_image.txt ]; then
                             PREV_IMAGE=\$(cat ~/previous_image.txt)
                             if [ -n "\$PREV_IMAGE" ]; then
@@ -185,7 +241,7 @@ pipeline {
                         """
 
                         // Retrieve the previous image name from the remote server
-                        sh 'sshpass -p ${SSH_PASSWORD} scp ${REMOTE_SERVER}:~/previous_image.txt previous_image.txt'
+                        sh 'sshpass -p ${SSH_PASSWORD} scp ${DEV_REMOTE_SERVER}:~/previous_image.txt previous_image.txt'
                         
                         // Read the previous image name
                         def prevImage = readFile('previous_image.txt').trim()
