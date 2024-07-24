@@ -94,63 +94,96 @@ pipeline {
         stage('Healthcheck') {
             steps {
                 script {
-                    def commitHash = GIT_COMMIT_HASH
-                    def version = "phonebook:dev-${GIT_COMMIT_HASH}"
-                    def author = sh(script: 'git log -1 --pretty=format:%an', returnStdout: true).trim()
-                    def date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                    catchError(buildResult: 'FAILURE', stageResult: 'UNSTABLE') { 
+                        def commitHash = GIT_COMMIT_HASH
+                        def version = "phonebook:dev-${GIT_COMMIT_HASH}"
+                        def author = sh(script: 'git log -1 --pretty=format:%an', returnStdout: true).trim()
+                        def date = new Date().format('yyyy-MM-dd HH:mm:ss')
 
-                    // Perform healthcheck
-                    def healthcheckUrl = "${APP_URL}/healthcheck"
-                    
-                    for(int i=0; i<10; i++) {
-                        sh "sleep 10"
-                        def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
+                        // Perform healthcheck
+                        def healthcheckUrl = "${APP_URL}/health-check"
                         
-                        if (healthcheckResponse == '200') {
-                            echo "Healthcheck passed: Server is online."
-                            //Test success
-                            date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                        for(int i=0; i<10; i++) {
+                            sh "sleep 10"
+                            def healthcheckResponse = sh(script: "curl -v -s -o /dev/null -w '%{http_code}' ${healthcheckUrl}", returnStdout: true).trim()
                             
-                            def message = """{
-                                "embeds": [{
-                                    "title": "Build Status: Success",
-                                    "color": 3066993,
-                                    "fields": [
-                                        {"name": "Deployed Version", "value": "${version}", "inline": true},
-                                        {"name": "Date", "value": "${date}", "inline": true},
-                                        {"name": "Author", "value": "${author}", "inline": true},
-                                        {"name": "Commit Hash", "value": "${commitHash}", "inline": false}
-                                    ]
-                                }]
-                            }"""
-                            
-                            sh """
-                                curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
-                            """
-                            return;
+                            if (healthcheckResponse == '200') {
+                                echo "Healthcheck passed: Server is online."
+                                //Test success
+                                date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                                
+                                def message = """{
+                                    "embeds": [{
+                                        "title": "Build Status: Success",
+                                        "color": 3066993,
+                                        "fields": [
+                                            {"name": "Deployed Version", "value": "${version}", "inline": true},
+                                            {"name": "Date", "value": "${date}", "inline": true},
+                                            {"name": "Author", "value": "${author}", "inline": true},
+                                            {"name": "Commit Hash", "value": "${commitHash}", "inline": false}
+                                        ]
+                                    }]
+                                }"""
+                                
+                                sh """
+                                    curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
+                                """
+                                return;
+                            }
                         }
+
+                        //Test fail
+                        date = new Date().format('yyyy-MM-dd HH:mm:ss')
+                        
+                        def message = """{
+                            "embeds": [{
+                                "title": "Build Status: Failure",
+                                "color": 15158332,
+                                "fields": [
+                                    {"name": "Deployed Version", "value": "${version}", "inline": true},
+                                    {"name": "Date", "value": "${date}", "inline": true},
+                                    {"name": "Author", "value": "${author}", "inline": true},
+                                    {"name": "Commit Hash", "value": "${commitHash}", "inline": false}
+                                ]
+                            }]
+                        }"""
+
+                        sh """
+                            curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
+                        """
+                        error("Healthcheck failed: Server is not responding with status 200.")
                     }
+                }
+            }
+        }
 
-                    //Test fail
-                    date = new Date().format('yyyy-MM-dd HH:mm:ss')
-                    
-                    def message = """{
-                        "embeds": [{
-                            "title": "Build Status: Failure",
-                            "color": 15158332,
-                            "fields": [
-                                {"name": "Deployed Version", "value": "${version}", "inline": true},
-                                {"name": "Date", "value": "${date}", "inline": true},
-                                {"name": "Author", "value": "${author}", "inline": true},
-                                {"name": "Commit Hash", "value": "${commitHash}", "inline": false}
-                            ]
-                        }]
-                    }"""
-
-                    sh """
-                        curl -X POST -H "Content-Type: application/json" -d '${message}' ${DISCORD_WEBHOOK_URL}
-                    """
-                    error("Healthcheck failed: Server is not responding with status 200.")
+        stage('Rollback') {
+            when {
+                expression { currentBuild.result == 'FAILURE' }
+            }
+            steps {
+                script {
+                    // Perform rollback
+                    withCredentials([string(credentialsId: 'ssh_password', variable: 'SSH_PASSWORD')]) {
+                        sh """
+                        sshpass -p ${SSH_PASSWORD} ssh ${REMOTE_SERVER} bash -c '
+                        if [ -f ~/previous_image.txt ]; then
+                            PREV_IMAGE=\$(cat ~/previous_image.txt)
+                            if [ -n "\$PREV_IMAGE" ]; then
+                                echo "Rolling back to previous image: \$PREV_IMAGE"
+                                docker stop phonebook-app || true
+                                docker rm phonebook-app || true
+                                docker image rm \$(docker image ls -qa) || true
+                                docker pull \$PREV_IMAGE
+                                docker run -d \\
+                                  --name phonebook-app \\
+                                  --network host \\
+                                  \$PREV_IMAGE
+                            fi
+                        fi
+                        '
+                        """
+                    }
                 }
             }
         }
