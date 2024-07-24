@@ -209,6 +209,22 @@ pipeline {
 
                     // Remove the local deployment script
                     sh 'rm deploy-test.sh'
+
+                    // Send deploy to test server information to Discord
+                    def testerMessage = """{
+                        "embeds": [{
+                            "title": "Deployment to Tester Server",
+                            "color": 12745742,
+                            "fields": [
+                                {"name": "Deployed Version", "value": "phonebook:dev-${GIT_COMMIT_HASH}", "inline": true},
+                                {"name": "Date", "value": "${new Date().format('yyyy-MM-dd HH:mm:ss')}", "inline": true}
+                            ]
+                        }]
+                    }"""
+                    
+                    sh """
+                        curl -X POST -H "Content-Type: application/json" -d '${testerMessage}' ${DISCORD_WEBHOOK_URL}
+                    """
                 }
             }
         }
