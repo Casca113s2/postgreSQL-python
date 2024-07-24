@@ -183,6 +183,31 @@ pipeline {
                         fi
                         '
                         """
+
+                        // Retrieve the previous image name from the remote server
+                        sh 'sshpass -p ${SSH_PASSWORD} scp ${REMOTE_SERVER}:~/previous_image.txt previous_image.txt'
+                        
+                        // Read the previous image name
+                        def prevImage = readFile('previous_image.txt').trim()
+                        
+                        // Save it as an environment variable for later use
+                        env.PREV_IMAGE = prevImage
+
+                        // Send rollback information to Discord
+                        def rollbackMessage = """{
+                            "embeds": [{
+                                "title": "Deployment Rollback",
+                                "color": 10181046,
+                                "fields": [
+                                    {"name": "Rolled Back To Version", "value": "${env.PREV_IMAGE}", "inline": true},
+                                    {"name": "Date", "value": "${new Date().format('yyyy-MM-dd HH:mm:ss')}", "inline": true}
+                                ]
+                            }]
+                        }"""
+
+                        sh """
+                            curl -X POST -H "Content-Type: application/json" -d '${rollbackMessage}' ${DISCORD_WEBHOOK_URL}
+                        """
                     }
                 }
             }
