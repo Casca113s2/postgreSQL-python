@@ -47,6 +47,9 @@ pipeline {
                     IMAGE_TAG=${GIT_COMMIT_HASH}
                     IMAGE_NAME="casca113s2/phonebook:dev-\$IMAGE_TAG"
 
+                    # Save the current running image name
+                    CURRENT_IMAGE=\$(docker inspect --format='{{.Config.Image}}' phonebook-app 2>/dev/null || echo '')
+
                     # Stop and remove the existing container (if any)
                     docker stop phonebook-app || true
                     docker rm phonebook-app || true
@@ -62,6 +65,12 @@ pipeline {
                       --name phonebook-app \\
                       --network host \\
                       \$IMAGE_NAME
+
+                    # Save the current running image to a file for rollback
+                    if [ -n "\$CURRENT_IMAGE" ]; then
+                        echo \$CURRENT_IMAGE > ~/previous_image.txt
+                    fi
+                    
                     # Remove the deployment script
                     rm -- "\$0"
                     """
