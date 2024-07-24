@@ -166,7 +166,7 @@ pipeline {
             }
             steps {
                 script {
-                    timeout(time: 1, unit: 'MINUTES') {
+                    timeout(time: 24, unit: 'HOURS') {
                         input message: 'Deploy to Tester Server?', ok: 'Deploy', submitter: 'admin'
 
                         // Deployment script for the tester server
