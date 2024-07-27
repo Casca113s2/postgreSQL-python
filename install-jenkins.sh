@@ -4,10 +4,15 @@
 JAVA_JDK_VERSION="jdk-17.0.11"
 JAVA_JDK_URL="https://download.oracle.com/java/17/archive/${JAVA_JDK_VERSION}_linux-x64_bin.tar.gz"
 JAVA_BASE_DIR="/opt/jdk"
+
 JENKINS_VERSION="2.452.3"
 JENKINS_WAR_URL="https://updates.jenkins.io/download/war/${JENKINS_VERSION}/jenkins.war"
-JENKINS_BASE_DIR="/opt/jenkins"
+JENKINS_WAR_DIR="/opt/jenkins"
+JENKINS_CLI_URL="https://jenkins.cascabase.online/jnlpJars/jenkins-cli.jar"
+JENKINS_CLI_DIR="/opt/jenkins"
 JENKINS_HOME_BASE="/jenkins"
+
+PLUGINS_FILE="plugins.txt"
 
 ### Enable debugging ###
 set -x
@@ -35,10 +40,16 @@ sudo update-alternatives --install /bin/javac javac /opt/jdk/${JAVA_JDK_VERSION}
 
 ### Install Jenkins ###
 sudo mkdir -p ${JENKINS_WAR_DIR}
+#sudo mkdir -p ${JENKINS_CLI_DIR} # In case .war and .jar have a different path 
 
 # Download Jenkins WAR file if it doesn't already exist
 if [ ! -f ${JENKINS_WAR_DIR}/jenkins.war ]; then
     sudo wget ${JENKINS_WAR_URL} -O ${JENKINS_WAR_DIR}/jenkins.war
+fi
+
+# Download Jenkins CLI JAR file if it doesn't already exist
+if [ ! -f ${JENKINS_CLI_DIR}/jenkins-cli.jar ]; then
+    sudo wget ${JENKINS_CLI_URL} -O ${JENKINS_CLI_DIR}/jenkins-cli.jar
 fi
 
 # Function to set up Jenkins instance
@@ -79,7 +90,38 @@ EOF"
   sudo systemctl enable jenkins_${port}.service
   sudo systemctl start jenkins_${port}.service
 
-  # Setup plugins for jenkins
+  
+  # Read the initial admin password
+  local admin_pass=$(sudo cat ${instance_dir}/secrets/initialAdminPassword)
+
+  # Install plugins
+  install_plugins ${port} ${admin_pass}
+}
+
+### Setup plugins for jenkins ###
+install_plugins() {
+  local port=$1
+  local admin_pass=$2
+
+  IFS=$'\n' # set the Internal Field Separator to newline
+  for plugin in $(cat "$PLUGINS_FILE")
+    do
+      # Clean up plugin name to remove special characters like '\r'
+      plugin_name=$(echo $plugin | tr -d '\r')
+
+      # Print debug information
+      echo "Installing plugin: ${plugin_name}"
+
+      # Install the plugin
+      sudo java -jar ${JENKINS_CLI_DIR}/jenkins-cli.jar -auth admin:${admin_pass} -s http://localhost:${port}/jenkins_${port} install-plugin ${plugin_name} || {
+        echo "Failed to install plugin: ${plugin_name}"
+        continue
+      }
+    done
+
+  # Restart Jenkins to apply plugin changes
+  echo "Restarting Jenkins service on port ${port}..."
+  sudo systemctl restart jenkins_${port}.service
 }
 
 # Check if at least one port number is provided
