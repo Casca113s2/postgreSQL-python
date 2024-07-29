@@ -107,6 +107,6 @@ async def delete_contact(contact_id: str):
 # Healthcheck endpoint
 @app.get("/healthcheck")
 async def healthcheck():
-    return {"status": "fail"}
+    return {"status": "ok"}
 
-app.mount("/", StaticFilesabcd(directory="client/static", html=True), name="static")
+app.mount("/", StaticFiles(directory="client/static", html=True), name="static")
