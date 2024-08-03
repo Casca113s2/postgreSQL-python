@@ -56,8 +56,8 @@ pipeline {
                     docker stop phonebook-app || true
                     docker rm phonebook-app || true
 
-                    # Delete all the previous image (if exist)
-                    docker image rm \$(docker image ls -qa) || true
+                    # Delete the previous image (if exist)
+                    docker image rm \$CURRENT_IMAGE || true
 
                     # Pull the latest Docker image
                     docker pull \$IMAGE_NAME
