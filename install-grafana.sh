@@ -3,11 +3,16 @@
 # Enable debugging
 set -x
 
+# Variables
+DOMAIN="dev-app.cascabase.online"
+ROOT_URL="https://dev-app.cascabase.online/grafana/"
+
 # Create directory and set privilages
 sudo mkdir /home/$(whoami)/grafana_config_volumes
 sudo mkdir /home/$(whoami)/grafana_config_volumes/loki
 sudo mkdir /home/$(whoami)/grafana_config_volumes/promtail
 sudo mkdir /home/$(whoami)/grafana_config_volumes/grafana
+sudo mkdir /home/$(whoami)/grafana_config_volumes/grafana_config
 sudo chmod -R 777 /home/$(whoami)/grafana_config_volumes/grafana
 
 # Create The docker-compose.yml
@@ -39,7 +44,9 @@ services:
     image: grafana/grafana:latest
     user: \"1000\"
     volumes:
+      - /home/$(whoami)/grafana_config_volumes/grafana_config:/etc/grafana_config
       - /home/$(whoami)/grafana_config_volumes/grafana:/var/lib/grafana
+    command: --config /etc/grafana_config/grafana.custom
     ports:
       - \"3000:3000\"
     restart: unless-stopped
@@ -104,6 +111,14 @@ scrape_configs:
      - labels:
          job: docker
          __path__: /var/lib/docker/containers/*/*-json.log
+EOF"
+
+# Create The Grafana Config
+sudo bash -c "cat > /home/$(whoami)/grafana_config_volumes/grafana_config/grafana.custom <<EOF
+[server]
+protocol = http
+domain = $DOMAIN
+root_url = $ROOT_URL
 EOF"
 
 # Install Loki Docker Drive
